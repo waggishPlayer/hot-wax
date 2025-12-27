@@ -1,9 +1,9 @@
 package com.hotwax.repository;
 
-import com.hotwax.model.OrderHeader;
+import com.hotwax.model.ContactMech;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface OrderHeaderRepository extends JpaRepository<OrderHeader, Integer> {
+public interface ContactMechRepository extends JpaRepository<ContactMech, Integer> {
 }

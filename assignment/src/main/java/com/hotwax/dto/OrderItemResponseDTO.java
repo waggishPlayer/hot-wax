@@ -2,14 +2,15 @@ package com.hotwax.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import java.math.BigDecimal;
+import lombok.NoArgsConstructor;
 
 @Data
+@NoArgsConstructor
 @AllArgsConstructor
 public class OrderItemResponseDTO {
-    private Long productId;
+    private Integer orderItemSeqId;
+    private Integer productId;
     private String productName;
     private Integer quantity;
-    private BigDecimal unitPrice;
-    private BigDecimal subtotal;
+    private String status;
 }

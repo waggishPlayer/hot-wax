@@ -2,18 +2,19 @@ package com.hotwax.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import lombok.NoArgsConstructor;
+import java.time.LocalDate;
 import java.util.List;
 
 @Data
+@NoArgsConstructor
 @AllArgsConstructor
 public class OrderResponseDTO {
-    private Long orderId;
-    private Long customerId;
+    private Integer orderId;
+    private LocalDate orderDate;
+    private Integer customerId;
     private String customerName;
-    private LocalDateTime orderDate;
-    private BigDecimal totalAmount;
-    private String status;
-    private List<OrderItemResponseDTO> items;
+    private Integer shippingContactMechId;
+    private Integer billingContactMechId;
+    private List<OrderItemResponseDTO> orderItems;
 }

@@ -2,8 +2,6 @@ package com.hotwax.model;
 
 import jakarta.persistence.*;
 import lombok.Data;
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 @Entity
 @Data
@@ -12,25 +10,15 @@ public class Product {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(name = "product_id")
+    private Integer productId;
     
-    @Column(nullable = false, length = 200)
-    private String name;
+    @Column(name = "product_name", nullable = false, length = 100)
+    private String productName;
     
-    @Column(columnDefinition = "TEXT")
-    private String description;
+    @Column(length = 30)
+    private String color;
     
-    @Column(nullable = false, precision = 10, scale = 2)
-    private BigDecimal price;
-    
-    @Column(name = "stock_quantity", nullable = false)
-    private Integer stockQuantity = 0;
-    
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
-    
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-    }
+    @Column(length = 10)
+    private String size;
 }

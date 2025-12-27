@@ -8,7 +8,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -17,144 +16,165 @@ import java.util.stream.Collectors;
 public class OrderService {
     
     private final OrderHeaderRepository orderHeaderRepository;
-    private final CustomerRepository customerRepository;
-    private final ProductRepository productRepository;
     private final OrderItemRepository orderItemRepository;
+    private final CustomerRepository customerRepository;
+    private final ContactMechRepository contactMechRepository;
+    private final ProductRepository productRepository;
     
     @Transactional
-    public OrderResponseDTO createOrder(OrderRequestDTO orderRequest) {
-        // Validate customer exists
-        Customer customer = customerRepository.findById(orderRequest.getCustomerId())
-                .orElseThrow(() -> new EntityNotFoundException(
-                        "Customer not found with ID: " + orderRequest.getCustomerId()));
+    public OrderResponseDTO createOrder(OrderRequestDTO request) {
+        Customer customer = customerRepository.findById(request.getCustomerId())
+                .orElseThrow(() -> new EntityNotFoundException("Customer not found with ID: " + request.getCustomerId()));
         
-        // Create order header
+        ContactMech shippingContact = contactMechRepository.findById(request.getShippingContactMechId())
+                .orElseThrow(() -> new EntityNotFoundException("Shipping contact not found with ID: " + request.getShippingContactMechId()));
+        
+        ContactMech billingContact = contactMechRepository.findById(request.getBillingContactMechId())
+                .orElseThrow(() -> new EntityNotFoundException("Billing contact not found with ID: " + request.getBillingContactMechId()));
+        
         OrderHeader orderHeader = new OrderHeader();
+        orderHeader.setOrderDate(request.getOrderDate());
         orderHeader.setCustomer(customer);
-        orderHeader.setStatus("PENDING");
+        orderHeader.setShippingContactMech(shippingContact);
+        orderHeader.setBillingContactMech(billingContact);
         
-        BigDecimal totalAmount = BigDecimal.ZERO;
-        
-        // Process each order item
-        for (OrderItemDTO itemDTO : orderRequest.getItems()) {
-            Product product = productRepository.findById(itemDTO.getProductId())
-                    .orElseThrow(() -> new EntityNotFoundException(
-                            "Product not found with ID: " + itemDTO.getProductId()));
-            
-            // Check stock availability
-            if (product.getStockQuantity() < itemDTO.getQuantity()) {
-                throw new IllegalStateException(
-                        "Insufficient stock for product: " + product.getName() + 
-                        ". Available: " + product.getStockQuantity() + 
-                        ", Requested: " + itemDTO.getQuantity());
-            }
-            
-            // Create order item
-            OrderItem orderItem = new OrderItem();
-            orderItem.setProduct(product);
-            orderItem.setQuantity(itemDTO.getQuantity());
-            orderItem.setUnitPrice(product.getPrice());
-            
-            BigDecimal subtotal = product.getPrice().multiply(BigDecimal.valueOf(itemDTO.getQuantity()));
-            orderItem.setSubtotal(subtotal);
-            
-            // Update stock
-            product.setStockQuantity(product.getStockQuantity() - itemDTO.getQuantity());
-            productRepository.save(product);
-            
-            // Add item to order
-            orderHeader.addOrderItem(orderItem);
-            totalAmount = totalAmount.add(subtotal);
-        }
-        
-        orderHeader.setTotalAmount(totalAmount);
-        
-        // Save order
         OrderHeader savedOrder = orderHeaderRepository.save(orderHeader);
         
-        // Build response DTO
-        return buildOrderResponseDTO(savedOrder);
+        for (OrderItemDTO itemDTO : request.getOrderItems()) {
+            Product product = productRepository.findById(itemDTO.getProductId())
+                    .orElseThrow(() -> new EntityNotFoundException("Product not found with ID: " + itemDTO.getProductId()));
+            
+            OrderItem orderItem = new OrderItem();
+            orderItem.setOrderId(savedOrder.getOrderId());
+            orderItem.setProduct(product);
+            orderItem.setQuantity(itemDTO.getQuantity());
+            orderItem.setStatus(itemDTO.getStatus());
+            
+            orderItemRepository.save(orderItem);
+        }
+        
+        return getOrderById(savedOrder.getOrderId());
     }
     
     @Transactional(readOnly = true)
-    public OrderResponseDTO getOrderById(Long orderId) {
+    public OrderResponseDTO getOrderById(Integer orderId) {
         OrderHeader orderHeader = orderHeaderRepository.findById(orderId)
                 .orElseThrow(() -> new EntityNotFoundException("Order not found with ID: " + orderId));
         
-        return buildOrderResponseDTO(orderHeader);
-    }
-    
-    @Transactional(readOnly = true)
-    public List<OrderResponseDTO> getAllOrders() {
-        return orderHeaderRepository.findAll().stream()
-                .map(this::buildOrderResponseDTO)
-                .collect(Collectors.toList());
-    }
-    
-    @Transactional(readOnly = true)
-    public List<OrderResponseDTO> getOrdersByCustomerId(Long customerId) {
-        if (!customerRepository.existsById(customerId)) {
-            throw new EntityNotFoundException("Customer not found with ID: " + customerId);
-        }
+        List<OrderItem> items = orderItemRepository.findByOrderId(orderId);
         
-        return orderHeaderRepository.findByCustomerId(customerId).stream()
-                .map(this::buildOrderResponseDTO)
-                .collect(Collectors.toList());
+        return buildOrderResponseDTO(orderHeader, items);
     }
     
     @Transactional
-    public OrderResponseDTO updateOrderStatus(Long orderId, String status) {
+    public OrderResponseDTO updateOrder(Integer orderId, OrderUpdateDTO updateDTO) {
         OrderHeader orderHeader = orderHeaderRepository.findById(orderId)
                 .orElseThrow(() -> new EntityNotFoundException("Order not found with ID: " + orderId));
         
-        orderHeader.setStatus(status.toUpperCase());
-        OrderHeader updatedOrder = orderHeaderRepository.save(orderHeader);
-        
-        return buildOrderResponseDTO(updatedOrder);
-    }
-    
-    @Transactional
-    public void cancelOrder(Long orderId) {
-        OrderHeader orderHeader = orderHeaderRepository.findById(orderId)
-                .orElseThrow(() -> new EntityNotFoundException("Order not found with ID: " + orderId));
-        
-        if (!"PENDING".equals(orderHeader.getStatus())) {
-            throw new IllegalStateException("Only PENDING orders can be cancelled");
+        if (updateDTO.getShippingContactMechId() != null) {
+            ContactMech shippingContact = contactMechRepository.findById(updateDTO.getShippingContactMechId())
+                    .orElseThrow(() -> new EntityNotFoundException("Shipping contact not found with ID: " + updateDTO.getShippingContactMechId()));
+            orderHeader.setShippingContactMech(shippingContact);
         }
         
-        // Restore stock quantities
-        for (OrderItem item : orderHeader.getOrderItems()) {
-            Product product = item.getProduct();
-            product.setStockQuantity(product.getStockQuantity() + item.getQuantity());
-            productRepository.save(product);
+        if (updateDTO.getBillingContactMechId() != null) {
+            ContactMech billingContact = contactMechRepository.findById(updateDTO.getBillingContactMechId())
+                    .orElseThrow(() -> new EntityNotFoundException("Billing contact not found with ID: " + updateDTO.getBillingContactMechId()));
+            orderHeader.setBillingContactMech(billingContact);
         }
         
-        orderHeader.setStatus("CANCELLED");
         orderHeaderRepository.save(orderHeader);
+        
+        return getOrderById(orderId);
     }
     
-    private OrderResponseDTO buildOrderResponseDTO(OrderHeader orderHeader) {
-        List<OrderItemResponseDTO> itemResponses = orderHeader.getOrderItems().stream()
+    @Transactional
+    public void deleteOrder(Integer orderId) {
+        if (!orderHeaderRepository.existsById(orderId)) {
+            throw new EntityNotFoundException("Order not found with ID: " + orderId);
+        }
+        orderHeaderRepository.deleteById(orderId);
+    }
+    
+    @Transactional
+    public OrderItemResponseDTO addOrderItem(Integer orderId, OrderItemDTO itemDTO) {
+        if (!orderHeaderRepository.existsById(orderId)) {
+            throw new EntityNotFoundException("Order not found with ID: " + orderId);
+        }
+        
+        Product product = productRepository.findById(itemDTO.getProductId())
+                .orElseThrow(() -> new EntityNotFoundException("Product not found with ID: " + itemDTO.getProductId()));
+        
+        OrderItem orderItem = new OrderItem();
+        orderItem.setOrderId(orderId);
+        orderItem.setProduct(product);
+        orderItem.setQuantity(itemDTO.getQuantity());
+        orderItem.setStatus(itemDTO.getStatus());
+        
+        OrderItem savedItem = orderItemRepository.save(orderItem);
+        
+        return new OrderItemResponseDTO(
+                savedItem.getOrderItemSeqId(),
+                product.getProductId(),
+                product.getProductName(),
+                savedItem.getQuantity(),
+                savedItem.getStatus()
+        );
+    }
+    
+    @Transactional
+    public OrderItemResponseDTO updateOrderItem(Integer orderId, Integer orderItemSeqId, OrderItemUpdateDTO updateDTO) {
+        OrderItem orderItem = orderItemRepository.findByOrderItemSeqIdAndOrderId(orderItemSeqId, orderId)
+                .orElseThrow(() -> new EntityNotFoundException("Order item not found with ID: " + orderItemSeqId + " for order: " + orderId));
+        
+        if (updateDTO.getQuantity() != null) {
+            orderItem.setQuantity(updateDTO.getQuantity());
+        }
+        
+        if (updateDTO.getStatus() != null) {
+            orderItem.setStatus(updateDTO.getStatus());
+        }
+        
+        OrderItem updatedItem = orderItemRepository.save(orderItem);
+        
+        return new OrderItemResponseDTO(
+                updatedItem.getOrderItemSeqId(),
+                updatedItem.getProduct().getProductId(),
+                updatedItem.getProduct().getProductName(),
+                updatedItem.getQuantity(),
+                updatedItem.getStatus()
+        );
+    }
+    
+    @Transactional
+    public void deleteOrderItem(Integer orderId, Integer orderItemSeqId) {
+        if (!orderItemRepository.findByOrderItemSeqIdAndOrderId(orderItemSeqId, orderId).isPresent()) {
+            throw new EntityNotFoundException("Order item not found with ID: " + orderItemSeqId + " for order: " + orderId);
+        }
+        orderItemRepository.deleteByOrderItemSeqIdAndOrderId(orderItemSeqId, orderId);
+    }
+    
+    private OrderResponseDTO buildOrderResponseDTO(OrderHeader orderHeader, List<OrderItem> items) {
+        List<OrderItemResponseDTO> itemDTOs = items.stream()
                 .map(item -> new OrderItemResponseDTO(
-                        item.getProduct().getId(),
-                        item.getProduct().getName(),
+                        item.getOrderItemSeqId(),
+                        item.getProduct().getProductId(),
+                        item.getProduct().getProductName(),
                         item.getQuantity(),
-                        item.getUnitPrice(),
-                        item.getSubtotal()
+                        item.getStatus()
                 ))
                 .collect(Collectors.toList());
         
-        String customerName = orderHeader.getCustomer().getFirstName() + " " + 
-                             orderHeader.getCustomer().getLastName();
+        String customerName = orderHeader.getCustomer().getFirstName() + " " + orderHeader.getCustomer().getLastName();
         
         return new OrderResponseDTO(
-                orderHeader.getId(),
-                orderHeader.getCustomer().getId(),
-                customerName,
+                orderHeader.getOrderId(),
                 orderHeader.getOrderDate(),
-                orderHeader.getTotalAmount(),
-                orderHeader.getStatus(),
-                itemResponses
+                orderHeader.getCustomer().getCustomerId(),
+                customerName,
+                orderHeader.getShippingContactMech().getContactMechId(),
+                orderHeader.getBillingContactMech().getContactMechId(),
+                itemDTOs
         );
     }
 }

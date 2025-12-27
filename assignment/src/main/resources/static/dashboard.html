@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Commerce API - Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <h2>E-Commerce API</h2>
+            <div class="nav-right">
+                <span id="username" class="username"></span>
+                <button onclick="logout()" class="btn-secondary">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="dashboard-container">
+        <div class="section">
+            <div class="section-header">
+                <h2>Orders</h2>
+                <button onclick="showCreateOrder()" class="btn-primary">Create Order</button>
+            </div>
+            <div id="ordersList" class="orders-list"></div>
+        </div>
+    </div>
+
+    <div id="createOrderModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2>Create New Order</h2>
+            <form id="createOrderForm">
+                <div class="form-group">
+                    <label for="customerId">Customer ID</label>
+                    <input type="number" id="customerId" required>
+                </div>
+                <div class="form-group">
+                    <label for="orderDate">Order Date</label>
+                    <input type="date" id="orderDate" required>
+                </div>
+                <div class="form-group">
+                    <label for="shippingContactId">Shipping Contact ID</label>
+                    <input type="number" id="shippingContactId" required>
+                </div>
+                <div class="form-group">
+                    <label for="billingContactId">Billing Contact ID</label>
+                    <input type="number" id="billingContactId" required>
+                </div>
+                <h3>Order Items</h3>
+                <div id="itemsContainer">
+                    <div class="item-group">
+                        <div class="form-group">
+                            <label>Product ID</label>
+                            <input type="number" class="productId" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Quantity</label>
+                            <input type="number" class="quantity" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Status</label>
+                            <select class="status">
+                                <option>PENDING</option>
+                                <option>CONFIRMED</option>
+                                <option>SHIPPED</option>
+                                <option>DELIVERED</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <button type="button" onclick="addItem()" class="btn-secondary">Add Item</button>
+                <button type="submit" class="btn-primary">Create Order</button>
+                <div id="orderError" class="error-message"></div>
+            </form>
+        </div>
+    </div>
+
+    <div id="orderDetailsModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeDetailsModal()">&times;</span>
+            <h2>Order Details</h2>
+            <div id="orderDetails"></div>
+        </div>
+    </div>
+
+    <script src="dashboard.js"></script>
+</body>
+</html>

@@ -2,7 +2,6 @@ package com.hotwax.model;
 
 import jakarta.persistence.*;
 import lombok.Data;
-import java.math.BigDecimal;
 
 @Entity
 @Data
@@ -11,10 +10,14 @@ public class OrderItem {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(name = "order_item_seq_id")
+    private Integer orderItemSeqId;
+    
+    @Column(name = "order_id", nullable = false)
+    private Integer orderId;
     
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "order_id", nullable = false)
+    @JoinColumn(name = "order_id", insertable = false, updatable = false)
     private OrderHeader orderHeader;
     
     @ManyToOne(fetch = FetchType.LAZY)
@@ -24,9 +27,6 @@ public class OrderItem {
     @Column(nullable = false)
     private Integer quantity;
     
-    @Column(name = "unit_price", nullable = false, precision = 10, scale = 2)
-    private BigDecimal unitPrice;
-    
-    @Column(nullable = false, precision = 10, scale = 2)
-    private BigDecimal subtotal;
+    @Column(nullable = false, length = 20)
+    private String status;
 }
