@@ -12,3 +12,5 @@ INSERT INTO product (product_name, color, size) VALUES ('Jeans', 'Blue', '32');
 INSERT INTO product (product_name, color, size) VALUES ('Sneakers', 'White', '10');
 INSERT INTO product (product_name, color, size) VALUES ('Jacket', 'Black', 'L');
 INSERT INTO product (product_name, color, size) VALUES ('Hat', 'Green', 'OneSize');
+
+INSERT INTO users (username, password, role) VALUES ('admin', '$2a$10$OZMjf7yWCEO0YfnA0o.g2OECo9Kau/7nJNn1KBpcfv5y4FRfK3pSC', 'ADMIN');
