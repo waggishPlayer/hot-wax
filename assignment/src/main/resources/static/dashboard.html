@@ -1,11 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>E-Commerce API - Dashboard</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
+
 <body>
     <nav class="navbar">
         <div class="nav-container">
@@ -18,12 +23,32 @@
     </nav>
 
     <div class="dashboard-container">
-        <div class="section">
+        <div class="tabs" style="justify-content: flex-start; margin-bottom: 20px;">
+            <button class="tab active" onclick="switchView('orders')">Orders</button>
+            <button class="tab" onclick="switchView('customers')">Customers</button>
+            <button class="tab" onclick="switchView('products')">Products</button>
+        </div>
+
+        <div id="ordersSection" class="section">
             <div class="section-header">
                 <h2>Orders</h2>
-                <button onclick="showCreateOrder()" class="btn-primary">Create Order</button>
+                <button onclick="showCreateOrder()" class="btn-primary" style="width: auto;">Create Order</button>
             </div>
             <div id="ordersList" class="orders-list"></div>
+        </div>
+
+        <div id="customersSection" class="section" style="display: none;">
+            <div class="section-header">
+                <h2>Customers</h2>
+            </div>
+            <div id="customersList"></div>
+        </div>
+
+        <div id="productsSection" class="section" style="display: none;">
+            <div class="section-header">
+                <h2>Products</h2>
+            </div>
+            <div id="productsList"></div>
         </div>
     </div>
 
@@ -33,27 +58,27 @@
             <h2>Create New Order</h2>
             <form id="createOrderForm">
                 <div class="form-group">
-                    <label for="customerId">Customer ID</label>
-                    <input type="number" id="customerId" required>
+                    <label for="customerId">Customer</label>
+                    <select id="customerId" required></select>
                 </div>
                 <div class="form-group">
                     <label for="orderDate">Order Date</label>
                     <input type="date" id="orderDate" required>
                 </div>
                 <div class="form-group">
-                    <label for="shippingContactId">Shipping Contact ID</label>
-                    <input type="number" id="shippingContactId" required>
+                    <label for="shippingContactId">Shipping Contact</label>
+                    <select id="shippingContactId" required></select>
                 </div>
                 <div class="form-group">
-                    <label for="billingContactId">Billing Contact ID</label>
-                    <input type="number" id="billingContactId" required>
+                    <label for="billingContactId">Billing Contact</label>
+                    <select id="billingContactId" required></select>
                 </div>
                 <h3>Order Items</h3>
                 <div id="itemsContainer">
                     <div class="item-group">
                         <div class="form-group">
-                            <label>Product ID</label>
-                            <input type="number" class="productId" required>
+                            <label>Product</label>
+                            <select class="productId" required></select>
                         </div>
                         <div class="form-group">
                             <label>Quantity</label>
@@ -87,4 +112,5 @@
 
     <script src="dashboard.js"></script>
 </body>
+
 </html>

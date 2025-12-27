@@ -21,6 +21,15 @@ public class OrderService {
     private final ContactMechRepository contactMechRepository;
     private final ProductRepository productRepository;
     
+    @Transactional(readOnly = true)
+    public List<OrderResponseDTO> getAllOrders() {
+        List<OrderHeader> orders = orderHeaderRepository.findAll();
+        return orders.stream().map(order -> {
+            List<OrderItem> items = orderItemRepository.findByOrderId(order.getOrderId());
+            return buildOrderResponseDTO(order, items);
+        }).collect(Collectors.toList());
+    }
+    
     @Transactional
     public OrderResponseDTO createOrder(OrderRequestDTO request) {
         Customer customer = customerRepository.findById(request.getCustomerId())

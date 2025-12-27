@@ -1,5 +1,8 @@
 const API_URL = 'http://localhost:8080';
 let orders = [];
+let customers = [];
+let products = [];
+let contacts = [];
 
 function getToken() {
     return localStorage.getItem('token');
@@ -53,7 +56,7 @@ async function loadOrders() {
 
 function displayOrders(orders) {
     const ordersList = document.getElementById('ordersList');
-    
+
     if (orders.length === 0) {
         ordersList.innerHTML = '<div class="empty-state"><h3>No orders found</h3><p>Create your first order to get started</p></div>';
         return;
@@ -78,15 +81,125 @@ function displayOrders(orders) {
     `).join('');
 }
 
+function switchView(viewName) {
+    document.querySelectorAll('.section').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+
+    document.getElementById(`${viewName}Section`).style.display = 'block';
+
+    const buttons = document.querySelectorAll('.tab');
+    buttons.forEach(btn => {
+        if (btn.innerText.toLowerCase() === viewName) {
+            btn.classList.add('active');
+        }
+    });
+
+    if (viewName === 'customers') displayCustomers();
+    if (viewName === 'products') displayProducts();
+}
+
+function displayCustomers() {
+    const container = document.getElementById('customersList');
+    if (customers.length === 0) {
+        container.innerHTML = '<p>No customers found.</p>';
+        return;
+    }
+    container.innerHTML = `
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="text-align: left; background: rgba(0,0,0,0.05);">
+                    <th style="padding: 12px;">ID</th>
+                    <th style="padding: 12px;">Name</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${customers.map(c => `
+                    <tr style="border-bottom: 1px solid rgba(0,0,0,0.05);">
+                        <td style="padding: 12px;">${c.customerId}</td>
+                        <td style="padding: 12px;">${c.firstName} ${c.lastName}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+function displayProducts() {
+    const container = document.getElementById('productsList');
+    if (products.length === 0) {
+        container.innerHTML = '<p>No products found.</p>';
+        return;
+    }
+    container.innerHTML = `
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="text-align: left; background: rgba(0,0,0,0.05);">
+                    <th style="padding: 12px;">ID</th>
+                    <th style="padding: 12px;">Name</th>
+                    <th style="padding: 12px;">Color</th>
+                    <th style="padding: 12px;">Size</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${products.map(p => `
+                    <tr style="border-bottom: 1px solid rgba(0,0,0,0.05);">
+                        <td style="padding: 12px;">${p.productId}</td>
+                        <td style="padding: 12px;">${p.productName}</td>
+                        <td style="padding: 12px;">${p.color}</td>
+                        <td style="padding: 12px;">${p.size}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+async function fetchData(endpoint) {
+    try {
+        const response = await fetch(`${API_URL}/data/${endpoint}`, {
+            headers: getHeaders()
+        });
+        if (response.ok) return await response.json();
+    } catch (e) { console.error(`Failed to fetch ${endpoint}`, e); }
+    return [];
+}
+
+async function loadFormData() {
+    [customers, products, contacts] = await Promise.all([
+        fetchData('customers'),
+        fetchData('products'),
+        fetchData('contacts')
+    ]);
+}
+
+function populateSelect(selectElement, data, valueKey, labelFn) {
+    selectElement.innerHTML = '<option value="">Select...</option>';
+    data.forEach(item => {
+        const option = document.createElement('option');
+        option.value = item[valueKey];
+        option.textContent = labelFn(item);
+        selectElement.appendChild(option);
+    });
+}
+
 function showCreateOrder() {
     document.getElementById('createOrderModal').style.display = 'block';
     document.getElementById('orderDate').valueAsDate = new Date();
+
+    if (customers.length === 0) loadFormData().then(updateDropdowns);
+    else updateDropdowns();
 }
 
-function closeModal() {
-    document.getElementById('createOrderModal').style.display = 'none';
-    document.getElementById('createOrderForm').reset();
-    document.getElementById('orderError').textContent = '';
+function updateDropdowns() {
+    populateSelect(document.getElementById('customerId'), customers, 'customerId', c => `${c.firstName} ${c.lastName}`);
+    populateSelect(document.getElementById('shippingContactId'), contacts, 'contactMechId', c => `${c.streetAddress}, ${c.city}`);
+    populateSelect(document.getElementById('billingContactId'), contacts, 'contactMechId', c => `${c.streetAddress}, ${c.city}`);
+
+    document.querySelectorAll('.productId').forEach(select => {
+        if (select.children.length <= 1) {
+            populateSelect(select, products, 'productId', p => `${p.productName} (${p.color}, ${p.size})`);
+        }
+    });
 }
 
 function addItem() {
@@ -95,12 +208,12 @@ function addItem() {
     itemGroup.className = 'item-group';
     itemGroup.innerHTML = `
         <div class="form-group">
-            <label>Product ID</label>
-            <input type="number" class="productId" required>
+            <label>Product</label>
+            <select class="productId" required></select>
         </div>
         <div class="form-group">
             <label>Quantity</label>
-            <input type="number" class="quantity" required>
+            <input type="number" class="quantity" required min="1" value="1">
         </div>
         <div class="form-group">
             <label>Status</label>
@@ -113,6 +226,9 @@ function addItem() {
         </div>
     `;
     container.appendChild(itemGroup);
+
+    const newSelect = itemGroup.querySelector('.productId');
+    populateSelect(newSelect, products, 'productId', p => `${p.productName} (${p.color}, ${p.size})`);
 }
 
 document.getElementById('createOrderForm').addEventListener('submit', async (e) => {
@@ -156,6 +272,11 @@ document.getElementById('createOrderForm').addEventListener('submit', async (e) 
     }
 });
 
+function getStatusClass(status) {
+    status = status.toLowerCase();
+    return `status-badge status-${status}`;
+}
+
 async function viewOrder(orderId) {
     try {
         const response = await fetch(`${API_URL}/orders/${orderId}`, {
@@ -190,7 +311,7 @@ async function viewOrder(orderId) {
                 ${order.items.map(item => `
                     <div class="detail-row">
                         <span class="detail-label">${item.productName} (${item.color}, ${item.size})</span>
-                        <span class="detail-value">Qty: ${item.quantity} - ${item.status}</span>
+                        <span class="detail-value">Qty: ${item.quantity} - <span class="${getStatusClass(item.status)}">${item.status}</span></span>
                     </div>
                 `).join('')}
             `;
@@ -226,5 +347,12 @@ async function deleteOrder(orderId) {
     }
 }
 
+function closeModal() {
+    document.getElementById('createOrderModal').style.display = 'none';
+    document.getElementById('createOrderForm').reset();
+    document.getElementById('orderError').textContent = '';
+}
+
 checkAuth();
 loadOrders();
+loadFormData();
